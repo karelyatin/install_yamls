@@ -315,3 +315,22 @@ neutron_deploy_cleanup: ## cleans up the service instance, Does not affect the o
 	$(eval $(call vars,$@,neutron))
 	oc kustomize ${DEPLOY_DIR} | oc delete --ignore-not-found=true -f -
 	rm -Rf ${OPERATOR_BASE_DIR}/neutron-operator ${DEPLOY_DIR}
+
+.PHONY: ovn_deploy
+ovn_deploy:
+	rm -rf osp-director-dev-tools
+	git clone https://github.com/openstack-k8s-operators/osp-director-dev-tools
+	sed -i 's/replicas:.*/replicas: 1/;s/300Mi/100Mi/' osp-director-dev-tools/ansible/roles/cnosp/files/ovn/*.yaml
+	oc apply -f osp-director-dev-tools/ansible/roles/cnosp/files/ovn
+	oc delete -f osp-director-dev-tools/ansible/roles/cnosp/files/ovn/service-1.yaml
+	oc delete -f osp-director-dev-tools/ansible/roles/cnosp/files/ovn/service-2.yaml
+	sleep 2
+	CIP=$$(oc get -n openstack svc -l app=ovn-ovsdb -o json | jq -re '.items[].spec.clusterIP'); \
+	oc create configmap -n openstack ovn-connection --dry-run=client --save-config=true -o json --from-literal=NBConnection=tcp:$${CIP}:6641 --from-literal=SBConnection=tcp:$${CIP}:6642|oc apply -f -
+
+.PHONY: ovn_deploy_cleanup
+ovn_deploy_cleanup:
+	rm -rf osp-director-dev-tools
+	git clone https://github.com/openstack-k8s-operators/osp-director-dev-tools
+	oc delete -f osp-director-dev-tools/ansible/roles/cnosp/files/ovn || true
+	oc delete cm ovn-connection
