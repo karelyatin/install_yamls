@@ -30,7 +30,8 @@ openstack image show cirros || \
     openstack image create --container-format bare --disk-format $DISK_FORMAT cirros < /tmp/$RAW
 
 # Create flavor
-openstack flavor create --ram 512 --vcpus 1 --disk 1 --ephemeral 1 m1.small
+openstack flavor show m1.small || \
+    openstack flavor create --ram 512 --vcpus 1 --disk 1 --ephemeral 1 m1.small
 
 # Create networks
 openstack network show private || openstack network create private --share
@@ -43,6 +44,14 @@ openstack router show priv_router || {
     openstack router add subnet priv_router priv_sub
     openstack router set priv_router --external-gateway public
 }
+openstack network show vlan || openstack network create vlan --provider-network-type vlan --provider-physical-network datacentre
+openstack subnet show vlan_sub || \
+    openstack subnet create vlan_sub --subnet-range 192.19.0.0/24 --allocation-pool start=192.19.0.10,end=192.19.0.210 --gateway 192.19.0.1 --dhcp --network vlan
+openstack router show vlan_router || {
+    openstack router create vlan_router
+    openstack router add subnet vlan_router vlan_sub
+    openstack router set vlan_router --external-gateway public
+}
 
 # List External compute resources
 openstack compute service list
@@ -54,9 +63,15 @@ openstack server show test || {
     openstack floating ip create public --floating-ip-address 192.168.122.20
     openstack server add floating ip test 192.168.122.20
 }
+openstack server show test-vlan || {
+    openstack server create --flavor m1.small --image cirros --nic net-id=vlan test-vlan --wait
+    openstack floating ip create public --floating-ip-address 192.168.122.21
+    openstack server add floating ip test-vlan 192.168.122.21
+}
 openstack server list
 openstack security group rule create --protocol icmp --ingress --icmp-type -1 $(openstack security group list --project admin -f value -c ID)
 openstack security group rule create --protocol tcp --ingress --dst-port 22 $(openstack security group list --project admin -f value -c ID)
 
 # check connectivity via FIP
 ping -c4 192.168.122.20
+ping -c4 192.168.122.21

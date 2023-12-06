@@ -55,7 +55,7 @@ spec:
       "cniVersion": "0.3.1",
       "name": "ctlplane",
       "type": "macvlan",
-      "master": "${INTERFACE}",
+      "master": "ospbr",
       "ipam": {
         "type": "whereabouts",
         "range": "${CTLPLANE_IP_ADDRESS_PREFIX}.0/24",
@@ -134,6 +134,25 @@ spec:
         "range_start": "172.19.0.30",
         "range_end": "172.19.0.70"
       }
+    }
+EOF_CAT
+
+cat > ${DEPLOY_DIR}/datacentre.yaml <<EOF_CAT
+apiVersion: k8s.cni.cncf.io/v1
+kind: NetworkAttachmentDefinition
+metadata:
+  labels:
+    osp/net: datacentre
+  name: datacentre
+  namespace: ${NAMESPACE}
+spec:
+  config: |
+    {
+      "cniVersion": "0.3.1",
+      "name": "datacentre",
+      "type": "bridge",
+      "bridge": "ospbr",
+      "ipam": {}
     }
 EOF_CAT
 

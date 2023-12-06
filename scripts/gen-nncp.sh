@@ -98,7 +98,7 @@ spec:
       config:
       - destination: 0.0.0.0/0
         next-hop-address: ${GATEWAY}
-        next-hop-interface: ${INTERFACE}
+        next-hop-interface: ospbr
     interfaces:
     - description: internalapi vlan interface
       ipv4:
@@ -145,7 +145,7 @@ spec:
       vlan:
         base-iface: ${INTERFACE}
         id: $((${VLAN_START}+$((${VLAN_STEP}*2))))
-    - description: Configuring ${INTERFACE}
+    - description: Configuring Bridge ospbr with interface ${INTERFACE}
       ipv4:
         address:
         - ip: ${CTLPLANE_IP_ADDRESS_PREFIX}.${CTLPLANE_IP_ADDRESS_SUFFIX}
@@ -155,9 +155,16 @@ spec:
       ipv6:
         enabled: false
       mtu: ${INTERFACE_MTU}
-      name: ${INTERFACE}
+      name: ospbr
+      bridge:
+        options:
+          stp:
+            enabled: false
+        port:
+          - name: ${INTERFACE}
+            vlan: {}
       state: up
-      type: ethernet
+      type: linux-bridge
 EOF_CAT
 if [ -n "$BGP" ]; then
   cat >> ${DEPLOY_DIR}/${WORKER}_nncp.yaml <<EOF_CAT

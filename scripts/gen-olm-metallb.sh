@@ -142,7 +142,7 @@ spec:
   ipAddressPools:
   - ctlplane
   interfaces:
-  - ${INTERFACE}
+  - ospbr
 ---
 apiVersion: metallb.io/v1beta1
 kind: L2Advertisement
