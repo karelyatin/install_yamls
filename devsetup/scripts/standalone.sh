@@ -28,12 +28,14 @@ EDPM_COMPUTE_NAME=${EDPM_COMPUTE_NAME:-"edpm-compute-${EDPM_COMPUTE_SUFFIX}"}
 EDPM_COMPUTE_NETWORK=${EDPM_COMPUTE_NETWORK:-default}
 STANDALONE_VM=${STANDALONE_VM:-"true"}
 if [[ ${STANDALONE_VM} == "true" ]]; then
-    EDPM_COMPUTE_NETWORK_IP=$(virsh net-dumpxml ${EDPM_COMPUTE_NETWORK} | xmllint --xpath 'string(/network/ip/@address)' -)
+    EDPM_COMPUTE_NETWORK_IP=$(virsh net-dumpxml ${EDPM_COMPUTE_NETWORK} | xmllint --xpath 'string(/network/ip[last()]/@address)' -)
 fi
 IP_ADRESS_SUFFIX=$((100+${EDPM_COMPUTE_SUFFIX}))
-IP=${IP:-"${EDPM_COMPUTE_NETWORK_IP%.*}.${IP_ADRESS_SUFFIX}"}
-OS_NET_CONFIG_IFACE=${OS_NET_CONFIG_IFACE:-"nic1"}
-GATEWAY=${GATEWAY:-"${EDPM_COMPUTE_NETWORK_IP}"}
+IP=${IP:-"${EDPM_COMPUTE_NETWORK_IP%:*}:${IP_ADRESS_SUFFIX}"}
+CTL_IP=${CTL_IP:-"fd00:aaaa::${IP_ADRESS_SUFFIX}"}
+IP6=[${IP:-"${EDPM_COMPUTE_NETWORK_IP%:*}:${IP_ADRESS_SUFFIX}"}]
+OS_NET_CONFIG_IFACE=${OS_NET_CONFIG_IFACE:-"nic2"}
+GATEWAY=${GATEWAY:-"${EDPM_COMPUTE_NETWORK_IP%:*}:2"}
 OUTPUT_DIR=${OUTPUT_DIR:-"${SCRIPTPATH}/../../out/edpm/"}
 SSH_KEY_FILE=${SSH_KEY_FILE:-"${OUTPUT_DIR}/ansibleee-ssh-key-id_rsa"}
 SSH_OPT="-o UserKnownHostsFile=/dev/null -o StrictHostKeyChecking=no -i $SSH_KEY_FILE"
@@ -72,14 +74,16 @@ if [[ ! -f $REPO_SETUP_CMDS ]]; then
     cat <<EOF > $REPO_SETUP_CMDS
 set -ex
 sudo dnf remove -y epel-release
-sudo dnf update -y
-sudo dnf install -y vim git curl util-linux lvm2 tmux wget
 URL=https://trunk.rdoproject.org/centos9-wallaby/component/tripleo/current-tripleo/
 RPM_NAME=\$(curl \$URL | grep python3-tripleo-repos | sed -e 's/<[^>]*>//g' | awk 'BEGIN { FS = ".rpm" } ; { print \$1 }')
 RPM=\$RPM_NAME.rpm
 sudo dnf install -y \$URL\$RPM
-sudo -E tripleo-repos -b wallaby current-tripleo-dev ceph --stream
+sudo -E tripleo-repos -b wallaby -d centos9 current-tripleo-dev ceph --stream
+# Temp hack
+#sudo sed -i 's/mirror.stream.centos.org/mirror.rackspace.com\/centos-stream/' /etc/yum.repos.d/tripleo-centos-powertools.repo
 sudo dnf repolist
+sudo dnf install -y vim git curl util-linux lvm2 tmux wget podman
+# Temp hack
 sudo dnf update -y
 EOF
 fi
@@ -204,12 +208,12 @@ cat << EOF > ${J2_VARS_FILE}
 ---
 additional_networks: ${EDPM_COMPUTE_ADDITIONAL_NETWORKS}
 additional_host_routes: ${EDPM_COMPUTE_ADDITIONAL_HOST_ROUTES}
-ctlplane_cidr: 24
-ctlplane_ip: ${IP}
+ctlplane_cidr: 64
+ctlplane_ip: ${CTL_IP}
 os_net_config_iface: ${OS_NET_CONFIG_IFACE}
 standalone_vm: ${STANDALONE_VM}
-ctlplane_subnet: ${IP%.*}.0/24
-ctlplane_vip: ${IP%.*}.99
+ctlplane_subnet: ${CTL_IP%:*}:/64
+ctlplane_vip: ${CTL_IP%:*}:99
 ip_address_suffix: ${IP_ADRESS_SUFFIX}
 interface_mtu: ${INTERFACE_MTU:-1500}
 gateway_ip: ${GATEWAY}
@@ -225,20 +229,20 @@ jinja2_render standalone/net_config.j2 "${J2_VARS_FILE}" > ${MY_TMP_DIR}/net_con
 jinja2_render standalone/role.j2 "${J2_VARS_FILE}" > ${MY_TMP_DIR}/Standalone.yaml
 
 # Copying files
-scp $SSH_OPT $REPO_SETUP_CMDS root@$IP:/tmp/repo-setup.sh
-scp $SSH_OPT $CMDS_FILE root@$IP:/tmp/standalone-deploy.sh
-scp $SSH_OPT ${MY_TMP_DIR}/net_config.yaml root@$IP:/tmp/net_config.yaml
-scp $SSH_OPT ${MY_TMP_DIR}/network_data.yaml root@$IP:/tmp/network_data.yaml
-scp $SSH_OPT ${MY_TMP_DIR}/deployed_network.yaml root@$IP:/tmp/deployed_network.yaml
-scp $SSH_OPT ${MY_TMP_DIR}/Standalone.yaml root@$IP:/tmp/Standalone.yaml
-[[ "$EDPM_COMPUTE_CEPH_ENABLED" == "true" ]] && scp $SSH_OPT standalone/ceph.sh root@$IP:/tmp/ceph.sh
-scp $SSH_OPT standalone/openstack.sh root@$IP:/tmp/openstack.sh
-scp $SSH_OPT standalone/post_config/ironic.sh root@$IP:/tmp/ironic_post.sh
+scp $SSH_OPT $REPO_SETUP_CMDS root@$IP6:/tmp/repo-setup.sh
+scp $SSH_OPT $CMDS_FILE root@$IP6:/tmp/standalone-deploy.sh
+scp $SSH_OPT ${MY_TMP_DIR}/net_config.yaml root@$IP6:/tmp/net_config.yaml
+scp $SSH_OPT ${MY_TMP_DIR}/network_data.yaml root@$IP6:/tmp/network_data.yaml
+scp $SSH_OPT ${MY_TMP_DIR}/deployed_network.yaml root@$IP6:/tmp/deployed_network.yaml
+scp $SSH_OPT ${MY_TMP_DIR}/Standalone.yaml root@$IP6:/tmp/Standalone.yaml
+[[ "$EDPM_COMPUTE_CEPH_ENABLED" == "true" ]] && scp $SSH_OPT standalone/ceph.sh root@$IP6:/tmp/ceph.sh
+scp $SSH_OPT standalone/openstack.sh root@$IP6:/tmp/openstack.sh
+scp $SSH_OPT standalone/post_config/ironic.sh root@$IP6:/tmp/ironic_post.sh
 [ -f $HOME/.ssh/id_ecdsa.pub ] || \
     ssh-keygen -t ecdsa -f $HOME/.ssh/id_ecdsa -q -N ""
-scp $SSH_OPT $HOME/.ssh/id_ecdsa.pub root@$IP:/root/.ssh/id_ecdsa.pub
+scp $SSH_OPT $HOME/.ssh/id_ecdsa.pub root@$IP6:/root/.ssh/id_ecdsa.pub
 if [[ -f $HOME/containers-prepare-parameters.yaml ]]; then
-    scp $SSH_OPT $HOME/containers-prepare-parameters.yaml root@$IP:/root/containers-prepare-parameters.yaml
+    scp $SSH_OPT $HOME/containers-prepare-parameters.yaml root@$IP6:/root/containers-prepare-parameters.yaml
 fi
 
 # Running
@@ -253,5 +257,6 @@ if [[ -n ${STANDALONE_EXTRA_CMD} ]]; then
 fi
 ssh $SSH_OPT root@$IP "bash /tmp/standalone-deploy.sh"
 deploy_result="$?"
+ssh $SSH_OPT root@$IP "dnf install -y systemd-container"
 ssh $SSH_OPT root@$IP "rm -f /tmp/standalone-deploy.sh"
 exit $deploy_result

@@ -33,8 +33,8 @@ OCTAVIA_ENABLED=${OCTAVIA_ENABLED:-false}
 
 export NEUTRON_INTERFACE=eth0
 export CTLPLANE_IP=${IP:-192.168.122.100}
-export CTLPLANE_VIP=${CTLPLANE_IP%.*}.99
-export CIDR=24
+export CTLPLANE_VIP=${CTLPLANE_IP%:*}:99
+export CIDR=64
 export GATEWAY=${GATEWAY:-192.168.122.1}
 export BRIDGE="br-ctlplane"
 if [ "$COMPUTE_DRIVER" = "ironic" ]; then
