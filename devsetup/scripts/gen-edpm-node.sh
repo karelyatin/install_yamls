@@ -42,7 +42,7 @@ EDPM_COMPUTE_NETWORK_TYPE=${EDPM_COMPUTE_NETWORK_TYPE:-network}
 # Use a json string to add additonal networks:
 # '[{"type": "network", "name": "crc-bmaas"}, {"type": "network", "name": "other-net"}]'
 EDPM_COMPUTE_ADDITIONAL_NETWORKS=${2:-'[]'}
-EDPM_COMPUTE_NETWORK_IP=$(virsh net-dumpxml ${EDPM_COMPUTE_NETWORK} | xmllint --xpath 'string(/network/ip/@address)' -)
+EDPM_COMPUTE_NETWORK_IP=$(virsh net-dumpxml ${EDPM_COMPUTE_NETWORK} | xmllint --xpath 'string(/network/ip[last()]/@address)' -)
 DATAPLANE_DNS_SERVER=${DATAPLANE_DNS_SERVER:-${EDPM_COMPUTE_NETWORK_IP}}
 CENTOS_9_STREAM_URL=${CENTOS_9_STREAM_URL:-"https://cloud.centos.org/centos/9-stream/x86_64/images/CentOS-Stream-GenericCloud-9-latest.x86_64.qcow2"}
 EDPM_IMAGE_URL=${EDPM_IMAGE_URL:-"${CENTOS_9_STREAM_URL}"}
@@ -221,12 +221,12 @@ if [ "$SWIFT_REPLICATED" = "true" ]; then
 fi
 
 # Set network variables for firstboot script
-IP=${IP:-"${EDPM_COMPUTE_NETWORK_IP%.*}.${IP_ADRESS_SUFFIX}"}
+IP=${IP:-"${EDPM_COMPUTE_NETWORK_IP%:*}:${IP_ADRESS_SUFFIX}"}
 NETDEV=eth0
 NETSCRIPT="/etc/sysconfig/network-scripts/ifcfg-${NETDEV}"
-GATEWAY=${GATEWAY:-"${EDPM_COMPUTE_NETWORK_IP}"}
+GATEWAY=${GATEWAY:-"${EDPM_COMPUTE_NETWORK_IP%:*}:2"}
 DNS=${DATAPLANE_DNS_SERVER}
-PREFIX=24
+PREFIX=64
 
 cat <<EOF >${OUTPUT_DIR}/${EDPM_COMPUTE_NAME}-firstboot.sh
 PARTITION=\$(df / --output=source | grep -o "[[:digit:]]")
@@ -257,7 +257,7 @@ nmcli device set eth0 managed yes
 n=0
 retries=6
 while true; do
-  nmcli device modify $NETDEV ipv4.addresses $IP/$PREFIX ipv4.gateway $GATEWAY ipv4.dns $DNS ipv4.method manual && break
+  nmcli device modify $NETDEV ipv6.addresses $IP/$PREFIX ipv6.gateway $GATEWAY ipv6.dns $DNS ipv6.method manual && break
   n="\$((n+1))"
   if (( n >= retries )); then
     echo "Failed to configure ipv4 address in $NETDEV."
