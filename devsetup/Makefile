@@ -407,7 +407,7 @@ edpm_compute: ## Create EDPM compute VM
 	if [ ${EDPM_TOTAL_NODES} -eq 1 ]; then \
 		scripts/gen-edpm-node.sh ${EDPM_COMPUTE_SUFFIX} '${EDPM_COMPUTE_ADDITIONAL_NETWORKS}'; \
 	else \
-		for INDEX in $(shell seq 0 $$((${EDPM_TOTAL_NODES} -1))) ; do \
+		for INDEX in $(shell seq 3 $$((${EDPM_TOTAL_NODES} +2))) ; do \
 			scripts/gen-edpm-node.sh $$INDEX '${EDPM_COMPUTE_ADDITIONAL_NETWORKS}' ; \
 		done \
 	fi

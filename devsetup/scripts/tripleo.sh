@@ -1,4 +1,4 @@
-#!/bin/bash
+#!/bin/bash -x
 #
 # Copyright 2024 Red Hat Inc.
 #
@@ -68,7 +68,6 @@ else
     HOST_PRIMARY_RESOLV_CONF_ENTRY=${HOST_PRIMARY_RESOLV_CONF_ENTRY:-$GATEWAY}
 fi
 
-set +x
 cat <<EOF > $MY_TMP_DIR/.standalone_env_file
 export RH_REGISTRY_USER="$REGISTRY_USER"
 export RH_REGISTRY_PWD="$RH_REGISTRY_PWD"
@@ -119,7 +118,7 @@ fi
 if [ "\$RH_REGISTRY_USER" ] && [ -n "\$RH_REGISTRY_PWD" ]; then
     grep -q ContainerImageRegistryCredentials \$HOME/containers-prepare-parameters.yaml || \
     cat >> \$HOME/containers-prepare-parameters.yaml <<__EOF__
-ContainerImageRegistryCredentials:
+  ContainerImageRegistryCredentials:
     registry.redhat.io:
         \${RH_REGISTRY_USER}: \$RH_REGISTRY_PWD
 __EOF__

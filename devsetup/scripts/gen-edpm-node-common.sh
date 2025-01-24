@@ -244,6 +244,15 @@ sudo chmod 0660 /etc/sudoers.d/cloud-admin
 # don't kill processes after ssh logout
 sudo loginctl enable-linger cloud-admin
 
+# create cloud-admin user
+sudo useradd zuul
+echo 'zuul     	ALL = (ALL) NOPASSWD: ALL' | sudo tee /etc/sudoers.d/zuul
+sudo chown root:root /etc/sudoers.d/zuul
+sudo chmod 0660 /etc/sudoers.d/zuul
+
+# don't kill processes after ssh logout
+sudo loginctl enable-linger zuul
+
 # initialize authorized keys from root
 if [ ! -e /home/cloud-admin/.ssh/authorized_keys ]; then
 	sudo mkdir -p /home/cloud-admin/.ssh
@@ -251,6 +260,15 @@ if [ ! -e /home/cloud-admin/.ssh/authorized_keys ]; then
 	sudo cp /root/.ssh/authorized_keys /home/cloud-admin/.ssh/authorized_keys
 	sudo chown -R cloud-admin: /home/cloud-admin/.ssh
 	sudo chmod 0600 /home/cloud-admin/.ssh/authorized_keys
+fi
+
+# initialize authorized keys from root
+if [ ! -e /home/zuul/.ssh/authorized_keys ]; then
+	sudo mkdir -p /home/zuul/.ssh
+	sudo chmod 0700 /home/zuul/.ssh
+	sudo cp /root/.ssh/authorized_keys /home/zuul/.ssh/authorized_keys
+	sudo chown -R zuul: /home/zuul/.ssh
+	sudo chmod 0600 /home/zuul/.ssh/authorized_keys
 fi
 
 # Set network for current session

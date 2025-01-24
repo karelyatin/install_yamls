@@ -46,10 +46,12 @@ fi
 test -f /home/zuul/hostnamemap.yaml || cat > /home/zuul/hostnamemap.yaml << EOF
 parameter_defaults:
   HostnameMap:
-    overcloud-controller-0: edpm-compute-1
-    cell1-controller-0: edpm-compute-2
-    cell1-compute-0: edpm-compute-3
-    cell2-controller-compute-0: edpm-compute-4
+    overcloud-controller-0: edpm-compute-3
+    overcloud-controller-1: edpm-compute-4
+    overcloud-controller-2: edpm-compute-5
+    overcloud-novacompute-0: edpm-compute-6
+    overcloud-novacompute-1: edpm-compute-7
+    overcloud-novacompute-2: edpm-compute-8
 EOF
 
 # check if hostnamemap contains networkers
