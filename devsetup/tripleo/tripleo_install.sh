@@ -50,8 +50,6 @@ parameter_defaults:
     overcloud-controller-1: edpm-compute-4
     overcloud-controller-2: edpm-compute-5
     overcloud-novacompute-0: edpm-compute-6
-    overcloud-novacompute-1: edpm-compute-7
-    overcloud-novacompute-2: edpm-compute-8
 EOF
 
 # check if hostnamemap contains networkers

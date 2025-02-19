@@ -562,7 +562,7 @@ standalone_snapshot: ## Create standalone snapshot
 	$(eval $(call vars))
 	virsh --connect=qemu:///system detach-device-alias edpm-compute-${EDPM_COMPUTE_SUFFIX} fs0 --live || true
 	sleep 3
-	virsh --connect=qemu:///system snapshot-create-as --atomic --domain edpm-compute-${EDPM_COMPUTE_SUFFIX} --name clean
+	virsh --connect=qemu:///system snapshot-create-as --atomic --domain edpm-compute-${EDPM_COMPUTE_SUFFIX} --name clean-${EDPM_COMPUTE_SUFFIX}
 
 .PHONY: standalone_revert
 standalone_revert: ## Revert standalone snapshot
